@@ -1,0 +1,132 @@
+---
+title: "Final Project"
+author: "Logan Van Vuren"
+date: "`r Sys.Date()`"
+output: openintro::lab_report
+---
+
+```{r load-packages, message=FALSE}
+library(tidyverse)
+library(readr)
+library(albersusa)
+library(plotly)
+states_covid <- read_csv("https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-states.csv")
+state_population <- read_csv("https://www2.census.gov/programs-surveys/popest/datasets/2010-2019/state/detail/SCPRC-EST2019-18+POP-RES.csv") %>% select(NAME, POPESTIMATE2019)
+us_states <- usa_sf("laea")
+View(state_population)
+View(us_states)
+View(states_covid)
+states_covid$date <- as.Date(states_covid$date)
+```
+
+```{r}
+# Combine States Pop and COVID Cases
+states_covid_pop <- left_join(states_covid, state_population, by=c("state" = "NAME"))
+states_covid_pop <- rename(states_covid_pop, "population" = "POPESTIMATE2019")
+
+states_covid_pop <- states_covid_pop %>% mutate(Deaths_Per_Capita = deaths/population, Cases_Per_Capita = cases/population)
+```
+
+```{r}
+# Most recent data
+today <- max(states_covid_pop$date)
+current <- states_covid_pop %>% filter(date == today)
+```
+
+
+```{r}
+# Graph of deaths only
+left_join(us_states, current, by=c("fips_state" = "fips")) %>% 
+ggplot() +
+  geom_sf(aes(fill=deaths)) +
+  scale_fill_continuous(low="yellow", high="red")
+
+# Graph of deaths_per_cap
+left_join(us_states, current, by=c("fips_state" = "fips")) %>% 
+ggplot() +
+  geom_sf(aes(fill=Deaths_Per_Capita)) +
+  scale_fill_continuous(low="yellow", high="red", labels = scales::percent)
+
+# Graph of cases_per_cap
+left_join(us_states, current, by=c("fips_state" = "fips")) %>% 
+ggplot() +
+  geom_sf(aes(fill=Cases_Per_Capita)) +
+  scale_fill_continuous(low="yellow", high="red", labels = scales::percent)
+```
+
+```{r}
+# Five top states in COVID deaths per capita
+states_covid_pop %>%
+  group_by(state) %>%
+  summarize(dpc = max(Deaths_Per_Capita)) %>% 
+  select(state, dpc) %>%
+  slice_max(dpc, n=5)
+```
+
+```{r}
+states_covid_pop %>% 
+  group_by(state, fips) %>%
+  summarize(plot_stat = max(deaths_per_cap)) %>%
+  arrange(desc(plot_stat)) %>% 
+  head(10)
+```
+
+
+```{r}
+# Top states COVID stat
+top_states <- function(stat, n_states = 50, data = states_covid_pop) {
+    my_stat <- enquo(stat)
+  data %>% 
+  group_by(state, fips) %>%
+  summarize(plot_stat = max(!!my_stat)) %>% 
+  arrange(desc(plot_stat)) %>%
+    head(n_states) %>% 
+    left_join(us_states, by=c("fips" = "fips_state")) %>% 
+    mutate(text=paste("<b>", state,"</b>\nDeaths Per Capita: ", signif(plot_stat, 2)))
+}
+```
+
+```{r eval=FALSE}
+# Filter data by date
+filter_date <- function(stat, n_date = today) {
+  my_stat <- enquo(stat)
+  data %>% 
+    filter(date == as.Date(n_date)) %>% 
+    left_join(us_states, by=c("fips" = "fips_state")) %>% 
+    mutate(text=paste("<b>", state,"</b>\nStat: ", signif(plot_stat, 2)))
+}
+```
+
+```{r}
+filter_date <- function(stat, mydate){
+  my_stat <- enquo(stat)
+  
+    covid_oneday <- states_covid_pop %>%
+        filter(date==as.Date(mydate)) %>%
+        select(plot_stat = !!my_stat, fips, state) %>% 
+      mutate(text=paste("<b>", state,"</b>\n", quo_name(my_stat), ": ", signif(plot_stat, 2)))
+    mapdata <- left_join(us_states, covid_oneday, by=c("fips_state"="fips"))
+    m <- ggplot(mapdata) +
+        geom_sf(aes(fill=plot_stat, text=text))
+    ggplotly(m, tooltip="text") %>%
+        style(hoveron = "fill")
+}
+filter_date(Deaths_Per_Capita, today)
+```
+
+```{r}
+# Graph from function
+COVIDPlot <- function(data) {
+  p <- data %>% 
+    ggplot() + 
+    geom_sf(aes(fill=plot_stat, geometry=geometry, text=text)) +
+    theme_minimal() +
+    scale_fill_continuous(low="yellow", high="red")
+  
+  ggplotly(p, tooltip="text") %>% 
+  style(hoveron="fills") 
+}
+
+COVIDPlot(filter_date(Deaths_Per_Capita, today))
+```
+
