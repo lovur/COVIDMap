@@ -1,5 +1,5 @@
 ---
-title: "Final Project"
+title: "Static Plot Markdown"
 author: "Logan Van Vuren"
 date: "`r Sys.Date()`"
 output: openintro::lab_report
