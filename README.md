@@ -29,7 +29,7 @@ ggplot() +
   geom_sf(aes(fill=Cases_Per_Capita)) +
   scale_fill_continuous(low="yellow", high="red", labels = scales::percent)
 ```
-<img src="images/casescap_covidmap.PNG?raw=true"/>
+<img src="casescap_covidmap.PNG?raw=true"/>
 
 ### 2. Transforming the plot into a plotly object
 
@@ -50,10 +50,10 @@ COVIDPlot <- function(data) {
 
 COVIDPlot(filter_date(Deaths_Per_Capita, today))
 ```
-<img src="images/plotly_covidmap.PNG?raw=true"/>
+<img src="plotly_covidmap.PNG?raw=true"/>
 
 ### 3. Migrating to a Shiny application
 
 Finally, I migrated the code to a Shiny application then deployed it to a server. The final Shiny application can be viewed [here,](https://vanvurenl.shinyapps.io/covid_visualization/?_ga=2.267778314.581288874.1612146626-1614514016.1607710385) and the code [here!](https://github.com/Prizm15/COVIDMap)
 
-<img src="images/shinyappdemo.PNG?raw=true"/>
+<img src="shinyappdemo.PNG?raw=true"/>
